@@ -1,6 +1,8 @@
 mod accs;
+mod types;
 
 use accs::*;
+use types::*;
 use anchor_lang::prelude::*;
 
 
@@ -19,6 +21,18 @@ pub mod voting_dapp {
         Ok(())
     }
 
+    // Method to vote
+    pub fn vote(ctx: Context<Vote>, vote: VoteOptions) -> Result<()> {
+        let votes_counter = &mut ctx.accounts.votes_counter;
+        match vote {
+            VoteOptions::Yes => votes_counter.yes += 1,
+            VoteOptions::No => votes_counter.no += 1,
+        }
+        let user_vote = &mut ctx.accounts.user_vote;
+        user_vote.bump = *ctx.bumps.get("user_vote").unwrap();
+        user_vote.vote = vote;
+        Ok(())
+    }
 }
 
 
@@ -27,7 +41,7 @@ pub mod voting_dapp {
 pub struct Initialize<'info> {
     // Signer account
     #[account(mut)]
-    user: Signer<'info>,
+    pub user: Signer<'info>,
     // VotesCounter account
     #[account(
         init,
@@ -36,10 +50,28 @@ pub struct Initialize<'info> {
         seeds = [b"votes_counter".as_ref()],
         bump
     )]
-    votes_counter: Account<'info, VotesCounter>,
+    pub votes_counter: Account<'info, VotesCounter>,
     // System Program itself
-    system_program: Program<'info, System>,
+    pub system_program: Program<'info, System>,
 }
 
-
+// Instructions Validations
+#[derive(Accounts)]
+#[instruction(vote: VoteOptions)]
+pub struct Vote<'info> {
+    // Signer account
+    #[account(mut)]
+    pub user: Signer<'info>,
+    // User Vote account
+    #[account(
+        init,
+        payer = user,
+        space = 8 + 1 + 2,
+        seeds = [b"user_vote".as_ref(), user.key().as_ref()],
+        bump
+    )]
+    pub user_vote: Account<'info, UserVote>,
+    pub votes_counter: Account<'info, VotesCounter>,
+    pub system_program: Program<'info, System>,
+}
 
