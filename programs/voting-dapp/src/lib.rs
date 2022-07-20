@@ -4,6 +4,8 @@ mod types;
 use accs::*;
 use types::*;
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program::invoke;
+use anchor_lang::solana_program::system_instruction::transfer;
 
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -28,9 +30,30 @@ pub mod voting_dapp {
             VoteOptions::Yes => votes_counter.yes += 1,
             VoteOptions::No => votes_counter.no += 1,
         }
+
         let user_vote = &mut ctx.accounts.user_vote;
         user_vote.bump = *ctx.bumps.get("user_vote").unwrap();
         user_vote.vote = vote;
+
+        let voting_fee = 2_000_000; // Fee in lmaports
+
+        // Create the instructions
+        let voting_fee_transfer = transfer(
+            &ctx.accounts.user.key(),
+            &votes_counter.key(),
+            voting_fee
+        );
+
+        // Call the system program
+        invoke(
+            &voting_fee_transfer,
+            &[
+                ctx.accounts.user.to_account_info(),
+                votes_counter.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ]
+        )?;
+
         Ok(())
     }
 }
@@ -74,4 +97,3 @@ pub struct Vote<'info> {
     pub votes_counter: Account<'info, VotesCounter>,
     pub system_program: Program<'info, System>,
 }
-
