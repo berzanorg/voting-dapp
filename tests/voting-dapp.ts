@@ -89,37 +89,40 @@ describe("voting-dapp", () => {
     })
 
 
-    it("Base user: Vote OK - votes for 'no' and pays voting service fee!", async () => {
+    it("New user: Vote OK - votes for 'no' and pays voting service fee!", async () => {
+        const {user: newUser, program: newProgram, provider: newProvider} = getNewProgramInteraction()
+        await addFunds(newUser)
+
         const [votesCounterPDA, _] = await PublicKey.findProgramAddress(
             [anchor.utils.bytes.utf8.encode("votes_counter")],
-            base_program.programId
+            newProgram.programId
         )
 
-        let votesCounterAccount = await base_program.account.votesCounter.fetch(votesCounterPDA)
+        let votesCounterAccount = await newProgram.account.votesCounter.fetch(votesCounterPDA)
 
         assert.equal(votesCounterAccount.yes.toString(), '1')
         assert.equal(votesCounterAccount.no.toString(), '0')
 
         const tx = base_program.methods.vote({ no: {} }).accounts({
-            user: base_user.publicKey,
+            user: newUser.publicKey,
             votesCounter: votesCounterPDA,
             systemProgram: SystemProgram.programId,
-        })
+        }).signers([newUser])
 
         const keys = await tx.pubkeys()
 
         await tx.rpc()
 
-        votesCounterAccount = await base_program.account.votesCounter.fetch(votesCounterPDA)
+        votesCounterAccount = await newProgram.account.votesCounter.fetch(votesCounterPDA)
 
         assert.equal(votesCounterAccount.yes.toString(), '1')
         assert.equal(votesCounterAccount.no.toString(), '1')
 
-        const userVoteAccount = await base_program.account.userVote.fetch(keys.userVote)
+        const userVoteAccount = await newProgram.account.userVote.fetch(keys.userVote)
 
-        assert.deepEqual(userVoteAccount.vote, { yes: {} })
+        assert.deepEqual(userVoteAccount.vote, { no: {} })
 
-        const updatedBalances = await base_provider.connection.getBalance(keys.votesCounter)
+        const updatedBalances = await newProvider.connection.getBalance(keys.votesCounter)
 
         const expectedBalance = votes_counter_initial_balance + 2 * VOTING_FEE;
         
