@@ -94,6 +94,7 @@ pub struct Vote<'info> {
         bump
     )]
     pub user_vote: Account<'info, UserVote>,
+    #[account(mut)]
     pub votes_counter: Account<'info, VotesCounter>,
     pub system_program: Program<'info, System>,
 }
